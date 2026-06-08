@@ -1,0 +1,160 @@
+{
+  "id": "wf_console_staff_reply",
+  "name": "wf_console_staff_reply",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "console/reply",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "4a64aa4f-e8d2-44bc-85b6-f04182c5f101",
+      "name": "Console Reply Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "phase1c-console-staff-reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst ticketId = String(body.ticket_id || '').trim();\nconst bodyText = String(body.body_text || '').trim();\nconst idempotencyKey = String(body.idempotency_key || '').trim();\nconst clerkUserId = String(body.clerk_user_id || '').trim();\n\nif (!ticketId || !bodyText || !idempotencyKey || !clerkUserId) {\n  throw new Error('ticket_id, body_text, idempotency_key, and clerk_user_id are required');\n}\n\nreturn [{\n  json: {\n    ticket_id: ticketId,\n    body_text: bodyText,\n    idempotency_key: idempotencyKey,\n    clerk_user_id: clerkUserId,\n    payload_json: JSON.stringify({\n      source: 'operator-console',\n      clerk_user_id: clerkUserId,\n      idempotency_key: idempotencyKey,\n      demo_delivery: 'db_only_no_twilio'\n    })\n  }\n}];"
+      },
+      "id": "4a64aa4f-e8d2-44bc-85b6-f04182c5f102",
+      "name": "Validate Reply Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with ticket as (\n  select ticket_id, customer_id\n  from tickets\n  where ticket_id = $1\n  limit 1\n), inserted as (\n  insert into messages (\n    customer_id,\n    ticket_id,\n    direction,\n    channel,\n    provider,\n    idempotency_key,\n    sender_role,\n    body_text,\n    payload_json,\n    status\n  )\n  select\n    customer_id,\n    ticket_id,\n    'outbound',\n    'whatsapp',\n    'operator-console-demo',\n    $2,\n    'staff',\n    $3,\n    $4::jsonb,\n    'accepted'\n  from ticket\n  on conflict do nothing\n  returning id, ticket_id, customer_id, created_at, true as inserted\n), existing as (\n  select id, ticket_id, customer_id, created_at, false as inserted\n  from messages\n  where idempotency_key = $2\n    and not exists (select 1 from inserted)\n  limit 1\n), message_row as (\n  select * from inserted\n  union all\n  select * from existing\n), ticket_update as (\n  update tickets\n  set last_staff_reply_at = now(), updated_at = now(), status = 'awaiting_customer'\n  where ticket_id = $1\n    and exists (select 1 from message_row)\n  returning ticket_id\n), event_insert as (\n  insert into event_log (type, ticket_id, customer_id, payload_json)\n  select\n    'console_staff_reply_recorded',\n    ticket_id,\n    customer_id,\n    jsonb_build_object(\n      'source', 'operator-console',\n      'clerk_user_id', $5,\n      'idempotency_key', $2,\n      'message_id', id,\n      'inserted', inserted,\n      'demo_delivery', 'db_only_no_twilio'\n    )\n  from message_row\n  returning id\n)\nselect\n  true as ok,\n  $1 as ticket_id,\n  $2 as idempotency_key,\n  id as message_id,\n  inserted\nfrom message_row;",
+        "options": {
+          "queryReplacement": [
+            "={{$json.ticket_id}}",
+            "={{$json.idempotency_key}}",
+            "={{$json.body_text}}",
+            "={{$json.payload_json}}",
+            "={{$json.clerk_user_id}}"
+          ]
+        }
+      },
+      "id": "4a64aa4f-e8d2-44bc-85b6-f04182c5f103",
+      "name": "Insert Staff Reply",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "phase1c_revenue_ops_postgres",
+          "name": "phase1c_revenue_ops_postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "phase3-console-reply-auth-condition",
+              "leftValue": "={{$json.headers.authorization || $json.headers.Authorization || \"\"}}",
+              "rightValue": "={{\"Bearer \" + $env.MVP_REPLY_WEBHOOK_SECRET}}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4a64aa4f-e8d2-44bc-85b6-f04182c5f104",
+      "name": "Console Reply Authorized",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ok: false, error: 'unauthorized', message: 'Unauthorized console reply webhook request' } }];"
+      },
+      "id": "4a64aa4f-e8d2-44bc-85b6-f04182c5f105",
+      "name": "Console Reply Unauthorized",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "Console Reply Webhook": {
+      "main": [
+        [
+          {
+            "node": "Console Reply Authorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Console Reply Authorized": {
+      "main": [
+        [
+          {
+            "node": "Validate Reply Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Console Reply Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Reply Request": {
+      "main": [
+        [
+          {
+            "node": "Insert Staff Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "phase3",
+  "meta": {
+    "instanceId": "placeholder",
+    "description": "Phase 3 demo workflow. Console reply webhook -> env auth check -> validated request -> parameterized Postgres insert."
+  },
+  "tags": []
+}

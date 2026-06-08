@@ -1,0 +1,25 @@
+# Keep local-only and generated files out of every Docker build context.
+.git
+.gitignore
+
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.mock
+!**/.env.real.example
+
+ai/
+docs/assets/phase4-demo/
+
+**/*.log
+**/.cache/
+**/tmp/
+**/temp/
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+**/.venv/
+**/.pytest_cache/
+**/__pycache__/
+**/*.pyc

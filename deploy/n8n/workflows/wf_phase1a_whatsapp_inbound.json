@@ -1,0 +1,263 @@
+{
+  "id": "wf_phase1a_whatsapp_inbound",
+  "name": "wf_phase1a_whatsapp_inbound",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "twilio/whatsapp/inbound",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "b2f1fd50-4ad4-4a1b-9f4b-1b31f86df001",
+      "name": "Twilio Inbound Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "phase1a-twilio-whatsapp-inbound"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst body = input.body || input;\nconst inboundText = String(body.inbound_text || body.body_text || body.Body || input.inbound_text || input.body_text || input.Body || 'Hi, I am interested in your product');\nconst lowered = inboundText.toLowerCase();\nconst infoKeywords = [\n  'policy', 'return', 'refund', 'faq', 'how', 'what is', 'what are', 'support',\n  '\\u9000\\u8d27', '\\u9000\\u6b3e', '\\u653f\\u7b56', '\\u5e38\\u89c1\\u95ee\\u9898', '\\u600e\\u4e48', '\\u5982\\u4f55', '\\u662f\\u4ec0\\u4e48'\n];\nconst isInformationQuery = infoKeywords.some((keyword) => lowered.includes(keyword));\nreturn [{\n  json: {\n    customer_id: body.customer_id || input.customer_id || '11111111-1111-4111-8111-111111111111',\n    customer_phone: body.customer_phone || input.customer_phone || '+15551234567',\n    customer_display_name: body.customer_display_name || input.customer_display_name || 'Demo Buyer',\n    message_id: body.message_id || input.message_id || '22222222-2222-4222-8222-222222222222',\n    inbound_text: inboundText,\n    intent: body.intent || input.intent || (isInformationQuery ? 'information_query' : 'purchase'),\n    intent_confidence: body.intent_confidence || body.confidence || input.intent_confidence || input.confidence || (isInformationQuery ? 0.88 : 0.91),\n    ticket_id: body.ticket_id || input.ticket_id || 'TICKET-PHASE1A-001',\n    route_intent: isInformationQuery ? 'rag' : 'sales',\n  },\n}];"
+      },
+      "id": "b2f1fd50-4ad4-4a1b-9f4b-1b31f86df010",
+      "name": "Route Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "phase2-route-rag-condition",
+              "leftValue": "={{$json.route_intent}}",
+              "rightValue": "rag",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2f1fd50-4ad4-4a1b-9f4b-1b31f86df011",
+      "name": "Route Is RAG",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rag-api:8000/chat",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "question",
+              "value": "={{$json.inbound_text}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 45000
+        }
+      },
+      "id": "b2f1fd50-4ad4-4a1b-9f4b-1b31f86df012",
+      "name": "RAG Knowledge API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1060,
+        180
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://sales-agent:8020/agent/respond",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Agent-Secret",
+              "value": "={{$env.AGENT_AUTH_SECRET}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "customer_id",
+              "value": "={{$json.customer_id}}"
+            },
+            {
+              "name": "customer_phone",
+              "value": "={{$json.customer_phone}}"
+            },
+            {
+              "name": "customer_display_name",
+              "value": "={{$json.customer_display_name}}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{$json.message_id}}"
+            },
+            {
+              "name": "inbound_text",
+              "value": "={{$json.inbound_text}}"
+            },
+            {
+              "name": "intent",
+              "value": "={{$json.intent}}"
+            },
+            {
+              "name": "intent_confidence",
+              "value": "={{$json.intent_confidence}}"
+            },
+            {
+              "name": "ticket_id",
+              "value": "={{$json.ticket_id}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "b2f1fd50-4ad4-4a1b-9f4b-1b31f86df002",
+      "name": "AI Sales Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1060,
+        420
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json || {};\nconst hasAnswer = typeof input.answer === 'string' && input.answer.trim().length > 0;\nconst hasError = Boolean(input.error || input.message === 'Connection refused' || input.name === 'NodeApiError');\nif (!hasAnswer || hasError) {\n  return [{\n    json: {\n      action: 'reply',\n      reply_text: 'Sorry, the knowledge service is temporarily unavailable. Please try again later.',\n      fallback: true,\n      route_intent: 'rag',\n      error_message: input.error?.message || input.message || 'rag_api_unavailable'\n    }\n  }];\n}\nreturn [{ json: input }];"
+      },
+      "id": "b2f1fd50-4ad4-4a1b-9f4b-1b31f86df013",
+      "name": "Format RAG Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json || {};\nconst hasReply = typeof input.reply_text === 'string' && input.reply_text.trim().length > 0;\nconst hasError = Boolean(input.error || input.message === 'Connection refused' || input.name === 'NodeApiError');\nif (!hasReply || hasError) {\n  return [{\n    json: {\n      action: 'reply',\n      reply_text: 'Sorry, the sales assistant is temporarily unavailable. Please try again later.',\n      conversation_stage: 'fallback',\n      lead_score: null,\n      qualification_tier: 'unknown',\n      handoff_triggered: false,\n      fallback: true,\n      route_intent: 'sales',\n      error_message: input.error?.message || input.message || 'sales_agent_unavailable'\n    }\n  }];\n}\nreturn [{ json: input }];"
+      },
+      "id": "b2f1fd50-4ad4-4a1b-9f4b-1b31f86df014",
+      "name": "Format Sales Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Twilio Inbound Webhook": {
+      "main": [
+        [
+          {
+            "node": "Route Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Intent": {
+      "main": [
+        [
+          {
+            "node": "Route Is RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Is RAG": {
+      "main": [
+        [
+          {
+            "node": "RAG Knowledge API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Sales Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Knowledge API": {
+      "main": [
+        [
+          {
+            "node": "Format RAG Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Sales Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Sales Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "phase3",
+  "meta": {
+    "instanceId": "placeholder",
+    "description": "Phase 3 workflow. Webhook -> intent route -> RAG or sales-agent with retries and fallback response formatting."
+  },
+  "tags": []
+}

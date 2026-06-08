@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-multipart
+pymupdf
+qdrant-client
+google-genai
+langchain-text-splitters
+pydantic
+pydantic-settings
+streamlit
+python-dotenv
+requests
+pytest

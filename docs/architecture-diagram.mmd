@@ -1,0 +1,59 @@
+flowchart LR
+  user["Simulated WhatsApp inbound<br/>scripts/simulate-message.ps1<br/>scripts/simulate-rag-query.ps1"]
+
+  subgraph compose["Docker Compose demo network"]
+    n8n["n8n:5678<br/>workflow orchestration<br/>n8nio/n8n:2.17.6"]
+    route["Route Intent<br/>keyword-based code node"]
+    ragHttp["RAG Knowledge API node<br/>3x retry"]
+    salesHttp["AI Sales Agent node<br/>3x retry"]
+    formatRag["Format RAG Response<br/>friendly fallback"]
+    formatSales["Format Sales Response<br/>friendly fallback"]
+
+    rag["rag-api:8000<br/>FastAPI RAG chat API"]
+    qdrant["qdrant:6333<br/>qdrant/qdrant:v1.18.0"]
+
+    sales["sales-agent:8020<br/>AI sales conversation<br/>lead scoring"]
+    sync["ghl-sync:8010<br/>CRM sync adapter"]
+    mock["ghl-mock:8090<br/>local GoHighLevel mock"]
+
+    pg["postgres:5432<br/>postgres:16<br/>revenue_ops + n8n_metadata"]
+    console["operator-console:3000<br/>optional phase1b profile"]
+    reply["Console reply webhook<br/>parameterized Postgres insert"]
+  end
+
+  user --> n8n
+  n8n --> route
+
+  route -->|"knowledge_query / information_query"| ragHttp
+  route -->|"sales / purchase intent"| salesHttp
+
+  ragHttp --> rag
+  rag --> qdrant
+  ragHttp --> formatRag
+
+  salesHttp --> sales
+  sales --> pg
+  sales --> sync
+  sync --> mock
+  sync --> pg
+  salesHttp --> formatSales
+
+  formatRag --> user
+  formatSales --> user
+
+  console --> reply
+  reply --> n8n
+  n8n --> pg
+  console --> pg
+
+  classDef workflow fill:#e8f3ff,stroke:#2b6cb0,color:#102a43;
+  classDef api fill:#eafaf1,stroke:#2f855a,color:#123524;
+  classDef data fill:#fff7e6,stroke:#b7791f,color:#3b2600;
+  classDef mock fill:#f8eeee,stroke:#c53030,color:#3b0a0a;
+  classDef ui fill:#f3e8ff,stroke:#6b46c1,color:#241044;
+
+  class n8n,route,ragHttp,salesHttp,formatRag,formatSales,reply workflow;
+  class rag,sales,sync api;
+  class pg,qdrant data;
+  class mock mock;
+  class console ui;

@@ -1,0 +1,31 @@
+# Dockerfile-specific ignore for the RAG API build.
+# Patterns are relative to the project root build context (..).
+
+*
+
+!services/
+!services/rag-api/
+!services/rag-api/app/
+!services/rag-api/app/**
+!services/rag-api/requirements.txt
+
+!deploy/
+!deploy/docker/
+!deploy/docker/rag-api.Dockerfile
+!deploy/docker/rag-api.Dockerfile.dockerignore
+!deploy/docker/rag-api-requirements.txt
+
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/.cache/
+**/tmp/
+**/temp/
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+**/.venv/
+**/.pytest_cache/
+**/__pycache__/

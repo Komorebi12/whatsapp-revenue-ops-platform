@@ -1,0 +1,216 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: whatsapp-revenue-ops-postgres
+    environment:
+      POSTGRES_DB: revenue_ops
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d revenue_ops"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ghl-mock:
+    build:
+      context: ../mock/ghl-mock-server
+      dockerfile: Dockerfile
+    container_name: whatsapp-revenue-ops-ghl-mock
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health').read()\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  sales-agent:
+    build:
+      context: ..
+      dockerfile: deploy/docker/sales-agent.Dockerfile
+    container_name: whatsapp-revenue-ops-sales-agent
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/revenue_ops
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-mock-gemini-key}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-http://ghl-mock:8090/mock-gemini}
+      GEMINI_MODEL: ${GEMINI_MODEL:-mock-gemini}
+      GHL_SYNC_BASE_URL: ${GHL_SYNC_BASE_URL:-http://ghl-sync:8010}
+      GHL_SYNC_AUTH_SECRET: ${GHL_SYNC_AUTH_SECRET:-mock-sync-secret}
+      AGENT_AUTH_SECRET: ${AGENT_AUTH_SECRET:-mock-agent-secret}
+      COMPANY_NAME: Demo Corp
+      COMPANY_PRODUCT_SUMMARY: CRM and automation solutions for SMBs
+      LOG_LEVEL: INFO
+    ports:
+      - "8020:8020"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ghl-mock:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8020/health').read()\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ghl-sync:
+    build:
+      context: ..
+      dockerfile: deploy/docker/ghl-sync.Dockerfile
+    container_name: whatsapp-revenue-ops-ghl-sync
+    environment:
+      GHL_API_TOKEN: ${GHL_API_TOKEN:-mock-ghl-token}
+      GHL_LOCATION_ID: ${GHL_LOCATION_ID:-loc_mock_001}
+      GHL_PIPELINE_ID: ${GHL_PIPELINE_ID:-pipe_mock_001}
+      GHL_STAGE_LEAD_CAPTURE_ID: ${GHL_STAGE_LEAD_CAPTURE_ID:-stage_mock_lead_capture}
+      GHL_STAGE_QUALIFICATION_ID: ${GHL_STAGE_QUALIFICATION_ID:-stage_mock_qualification}
+      GHL_STAGE_WON_ID: ${GHL_STAGE_WON_ID:-stage_mock_won}
+      GHL_STAGE_LOST_ID: ${GHL_STAGE_LOST_ID:-stage_mock_lost}
+      GHL_INTENT_FIELD_KEY: ${GHL_INTENT_FIELD_KEY:-whatsapp_intent}
+      GHL_API_BASE_URL: ${GHL_API_BASE_URL:-http://ghl-mock:8090}
+      GHL_API_VERSION: ${GHL_API_VERSION:-2021-07-28}
+      SYNC_AUTH_SECRET: ${SYNC_AUTH_SECRET:-mock-sync-secret}
+      SYNC_SOURCE_SYSTEM: ${SYNC_SOURCE_SYSTEM:-whatsapp_demo}
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/revenue_ops
+    ports:
+      - "8010:8010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ghl-mock:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health').read()\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  qdrant:
+    image: qdrant/qdrant:v1.18.0
+    container_name: whatsapp-revenue-ops-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6333'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rag-api:
+    build:
+      context: ..
+      dockerfile: deploy/docker/rag-api.Dockerfile
+    container_name: whatsapp-revenue-ops-rag-api
+    environment:
+      MOCK_MODE: ${MOCK_MODE:-false}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: local-dev-dummy-key
+      QDRANT_COLLECTION: whatsapp_demo_knowledge
+      EMBEDDING_MODEL: gemini-embedding-001
+      EMBEDDING_DIMENSION: 3072
+      LLM_MODEL: gemini-2.5-flash
+      CHUNK_SIZE: 500
+      CHUNK_OVERLAP: 100
+      EMBEDDING_BATCH_SIZE: 20
+      EMBEDDING_BATCH_SLEEP_SECONDS: 4
+      TOP_K: 5
+    ports:
+      - "8000:8000"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  n8n:
+    image: n8nio/n8n:2.17.6
+    container_name: whatsapp-revenue-ops-n8n
+    environment:
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_EDITOR_BASE_URL: http://localhost:5678
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-mock-n8n-encryption-key-for-local-demo-only}
+      N8N_BASIC_AUTH_ACTIVE: "false"
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n_metadata
+      DB_POSTGRESDB_USER: postgres
+      DB_POSTGRESDB_PASSWORD: postgres
+      BUSINESS_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/revenue_ops
+      RAG_API_URL: http://rag-api:8000/chat
+      MVP_REPLY_WEBHOOK_SECRET: ${MVP_REPLY_WEBHOOK_SECRET:-mock-console-secret}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      N8N_TEMPLATES_ENABLED: "false"
+      N8N_DEFAULT_BINARY_DATA_MODE: filesystem
+      NODE_FUNCTION_ALLOW_EXTERNAL: "*"
+      N8N_LOG_LEVEL: info
+      GENERIC_TIMEZONE: Asia/Shanghai
+      AGENT_AUTH_SECRET: ${AGENT_AUTH_SECRET:-mock-agent-secret}
+    entrypoint: ["/bin/sh", "/bootstrap/n8n-entrypoint.sh"]
+    ports:
+      - "5678:5678"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/credentials:/credentials:ro
+      - ./n8n/workflows:/workflows:ro
+      - ./n8n/bootstrap-entrypoint.sh:/bootstrap/n8n-entrypoint.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5678/healthz',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  operator-console:
+    profiles:
+      - phase1b
+    build:
+      context: ..
+      dockerfile: deploy/docker/operator-console.Dockerfile
+      args:
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+    container_name: whatsapp-revenue-ops-operator-console
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/revenue_ops
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      MVP_REPLY_WEBHOOK_URL: http://n8n:5678/webhook/console/reply
+      MVP_REPLY_WEBHOOK_SECRET: ${MVP_REPLY_WEBHOOK_SECRET:-mock-console-secret}
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      n8n:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000/sign-in',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  postgres_data:
+  n8n_data:
+  qdrant_data:

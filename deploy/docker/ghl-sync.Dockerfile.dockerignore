@@ -1,0 +1,31 @@
+# Dockerfile-specific ignore for the GHL sync build.
+# Patterns are relative to the project root build context (..).
+
+*
+
+!services/
+!services/ghl-sync/
+!services/ghl-sync/app/
+!services/ghl-sync/app/**
+!services/ghl-sync/requirements.txt
+
+!deploy/
+!deploy/docker/
+!deploy/docker/ghl-sync.Dockerfile
+!deploy/docker/ghl-sync.Dockerfile.dockerignore
+
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/.cache/
+**/tmp/
+**/temp/
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+**/.venv/
+**/.pytest_cache/
+**/__pycache__/
+**/*.pyc

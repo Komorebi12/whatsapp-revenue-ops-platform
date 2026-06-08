@@ -1,0 +1,31 @@
+# Dockerfile-specific ignore for the sales agent build.
+# Patterns are relative to the project root build context (..).
+
+*
+
+!services/
+!services/sales-agent/
+!services/sales-agent/app/
+!services/sales-agent/app/**
+!services/sales-agent/requirements.txt
+
+!deploy/
+!deploy/docker/
+!deploy/docker/sales-agent.Dockerfile
+!deploy/docker/sales-agent.Dockerfile.dockerignore
+
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/.cache/
+**/tmp/
+**/temp/
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+**/.venv/
+**/.pytest_cache/
+**/__pycache__/
+**/*.pyc

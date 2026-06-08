@@ -1,0 +1,10 @@
+fastapi==0.136.1
+uvicorn==0.47.0
+python-multipart==0.0.29
+PyMuPDF==1.27.2.3
+qdrant-client==1.18.0
+google-genai==2.5.0
+langchain-text-splitters==1.1.2
+pydantic==2.13.4
+pydantic-settings==2.14.1
+python-dotenv==1.2.2

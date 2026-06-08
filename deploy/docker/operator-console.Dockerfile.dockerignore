@@ -1,0 +1,25 @@
+# Dockerfile-specific ignore for the operator console build.
+# Patterns are relative to the project root build context (..).
+
+*
+
+!apps/
+!apps/operator-console/
+!apps/operator-console/**
+
+!deploy/
+!deploy/docker/
+!deploy/docker/operator-console.Dockerfile
+!deploy/docker/operator-console.Dockerfile.dockerignore
+
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/.cache/
+**/tmp/
+**/temp/
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
