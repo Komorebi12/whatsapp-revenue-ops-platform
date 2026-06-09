@@ -34,7 +34,7 @@ export async function sendStaffReply(ticketId: string, text: string) {
 
   const idempotencyKey = crypto.randomUUID();
 
-  // Phase 3 production path
+  // Production path
   const webhookUrl = process.env.MVP_REPLY_WEBHOOK_URL;
   const webhookSecret = process.env.MVP_REPLY_WEBHOOK_SECRET;
 

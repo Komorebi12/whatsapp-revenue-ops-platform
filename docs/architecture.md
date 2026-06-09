@@ -17,7 +17,7 @@ The default Compose stack runs eight services on one Docker network:
 | `ghl-mock` | `mock/ghl-mock-server` | 8090 | Local mock for CRM calls and mock Gemini-style sales responses |
 | `rag-api` | `services/rag-api` | 8000 | RAG chat API with mock-first fallback and optional real Gemini-backed retrieval |
 | `qdrant` | `qdrant/qdrant:v1.18.0` | 6333 | Vector storage for the optional real RAG path |
-| `operator-console` | `apps/operator-console` | 3000 | Optional Next.js operator console enabled by the `phase1b` profile |
+| `operator-console` | `apps/operator-console` | 3000 | Optional Next.js operator console enabled by the `console` profile |
 
 All custom service images build from paths inside this repository. No Docker build context depends on a sibling project or historical monorepo checkout.
 

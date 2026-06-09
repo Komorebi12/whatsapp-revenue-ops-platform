@@ -154,7 +154,7 @@
   "versionId": "phase3",
   "meta": {
     "instanceId": "placeholder",
-    "description": "Phase 3 demo workflow. Console reply webhook -> env auth check -> validated request -> parameterized Postgres insert."
+    "description": "Demo workflow. Console reply webhook -> env auth check -> validated request -> parameterized Postgres insert."
   },
   "tags": []
 }

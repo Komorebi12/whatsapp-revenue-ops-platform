@@ -15,6 +15,7 @@ temp/
 .cache/
 
 # Docker/database local artifacts
+work/
 volumes/
 runtime/
 data/

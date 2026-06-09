@@ -5,6 +5,17 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
+
+function Get-RelativePath {
+  param(
+    [string]$BasePath,
+    [string]$Path
+  )
+
+  $baseUri = New-Object System.Uri(($BasePath.TrimEnd('\') + '\'))
+  $pathUri = New-Object System.Uri($Path)
+  return [System.Uri]::UnescapeDataString($baseUri.MakeRelativeUri($pathUri).ToString()).Replace('/', '\')
+}
 $requiredPaths = @(
   'services/sales-agent/app',
   'services/sales-agent/requirements.txt',
@@ -49,7 +60,7 @@ $scanFiles = @(
   'docs/data-model.md',
   'docs/public-release-manifest.md',
   'docs/portfolio/claims-ledger.md',
-  'docs/portfolio/upwork-listing.md',
+  'docs/proposal-packet/proof-points.md',
   'mock/ghl-mock-server/README.md'
 )
 
@@ -70,6 +81,57 @@ foreach ($relativeFile in $scanFiles) {
 
 if ($violations.Count -gt 0) {
   throw "Standalone release still depends on monorepo paths: $($violations -join '; ')"
+}
+
+$publicDenylist = @(
+  ([string]([char]0x591a) + [string]([char]0x0041) + [string]([char]0x0049) + [string]([char]0x534f) + [string]([char]0x4f5c)),
+  ('Phase 2 ' + 'MVP'),
+  ('Phase ' + '3'),
+  ('phase' + '1b')
+)
+
+$textExtensions = @(
+  '.css',
+  '.js',
+  '.json',
+  '.md',
+  '.mjs',
+  '.ps1',
+  '.sh',
+  '.sql',
+  '.svg',
+  '.ts',
+  '.tsx',
+  '.txt',
+  '.yml'
+)
+
+$denylistViolations = @()
+Get-ChildItem -LiteralPath $resolvedRoot -Recurse -File |
+  Where-Object {
+    $relative = (Get-RelativePath -BasePath $resolvedRoot -Path $_.FullName).Replace('\', '/')
+    $textExtensions -contains $_.Extension.ToLowerInvariant() -and
+      -not $relative.StartsWith('ai/') -and
+      -not $relative.StartsWith('work/') -and
+      -not $relative.StartsWith('docs/assets/') -and
+      -not $relative.StartsWith('docs/phase-plan.md') -and
+      -not $relative.StartsWith('docs/codex-boundaries.md') -and
+      -not $relative.StartsWith('docs/gemini-checklist.md') -and
+      -not $relative.StartsWith('docs/demo-script.md') -and
+      -not $relative.StartsWith('docs/portfolio/recording-guide.md')
+  } |
+  ForEach-Object {
+    $relative = (Get-RelativePath -BasePath $resolvedRoot -Path $_.FullName).Replace('\', '/')
+    $content = Get-Content -LiteralPath $_.FullName -Raw
+    foreach ($pattern in $publicDenylist) {
+      if ($content.Contains($pattern)) {
+        $denylistViolations += "$relative contains '$pattern'"
+      }
+    }
+  }
+
+if ($denylistViolations.Count -gt 0) {
+  throw "Public release naming/provenance denylist failed: $($denylistViolations -join '; ')"
 }
 
 Write-Host "Standalone release structure: ok"

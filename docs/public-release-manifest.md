@@ -2,7 +2,15 @@
 
 This manifest defines the clean-tree policy for publishing WhatsApp Revenue Ops Platform as an open reference implementation for self-hosting n8n.
 
-The public repo must be created from a clean copied subtree and a fresh `git init`. Do not publish the historical `多AI协作` monorepo or a filtered version of its history.
+The public repo must be created from a clean copied subtree and a fresh `git init`. Do not publish the historical private multi-project workspace or a filtered version of its history.
+
+After the clean initial release, public updates must still flow through the same clean-tree pipeline:
+
+```text
+source project tree -> final-clean tree -> publish-local repo -> ordinary commit -> normal push
+```
+
+Do not hand-edit `publish-local`, amend public commits, force push, or rewrite public history without a new standard-path decision.
 
 ## Include
 
@@ -53,22 +61,25 @@ Documentation:
 - `docs/data-model.md`
 - `docs/public-release-manifest.md`
 - `docs/portfolio/claims-ledger.md`
-- `docs/portfolio/upwork-listing.md`
+- `docs/proposal-packet/proof-points.md`
 - selected sanitized `docs/assets/**` only after a separate asset review; no screenshots or videos are included by default
 
-Historical planning and proposal-packet docs are internal by default and must not be published unless separately rewritten for the public reference repo:
+Historical planning, demo narration, and sales/proposal packet drafts are internal by default and must not be published unless separately rewritten for the public reference repo:
 
 - `docs/phase-plan.md`
 - `docs/codex-boundaries.md`
 - `docs/gemini-checklist.md`
 - `docs/demo-script.md`
+- `docs/portfolio/recording-guide.md`
+- `docs/portfolio/upwork-listing.md`
+- `ai/proposal-packet/**`
 
 ## Exclude
 
 Repository and internal coordination:
 
 - `.git/`
-- old monorepo history
+- old private workspace history
 - `ai/**`
 - `AGENTS.md`
 - `CLAUDE.md`
@@ -143,7 +154,7 @@ n8n credential exports should not be published unless they are demonstrably non-
 
 ## Standalone Build Requirement
 
-Before publishing, verify the clean release tree can build without access to the old `多AI协作` monorepo. In practice this means:
+Before publishing, verify the clean release tree can build without access to the old private multi-project workspace. In practice this means:
 
 - no Dockerfile may `COPY` from a sibling monorepo project path,
 - no Compose `build.context` may require `../..`,
@@ -154,4 +165,4 @@ Before publishing, verify the clean release tree can build without access to the
 
 The public repo's MIT license covers only this project's own code, docs, scripts, manifests, and mock/custom services.
 
-n8n itself remains governed by n8n's own license terms, including the Sustainable Use License. The public wording must remain "open reference implementation for self-hosting n8n", not "open source n8n".
+n8n itself remains governed by n8n's own license terms, including the Sustainable Use License. The public wording must remain "open reference implementation for self-hosting n8n" and must not imply that this repository relicenses n8n.

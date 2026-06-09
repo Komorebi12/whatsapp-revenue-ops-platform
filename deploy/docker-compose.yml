@@ -183,7 +183,7 @@ services:
 
   operator-console:
     profiles:
-      - phase1b
+      - console
     build:
       context: ..
       dockerfile: deploy/docker/operator-console.Dockerfile

@@ -257,7 +257,7 @@
   "versionId": "phase3",
   "meta": {
     "instanceId": "placeholder",
-    "description": "Phase 3 workflow. Webhook -> intent route -> RAG or sales-agent with retries and fallback response formatting."
+    "description": "Demo workflow. Webhook -> intent route -> RAG or sales-agent with retries and fallback response formatting."
   },
   "tags": []
 }

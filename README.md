@@ -26,7 +26,7 @@ The Compose stack defines eight services:
 | `sales-agent` | 8020 | AI sales conversation and lead scoring API |
 | `ghl-sync` | 8010 | CRM sync service pointed at the local GHL mock |
 | `ghl-mock` | 8090 | Local mock for GoHighLevel and sales-agent Gemini-style calls |
-| `operator-console` | 3000 | Optional Next.js operator console, enabled with the `phase1b` profile |
+| `operator-console` | 3000 | Optional Next.js operator console, enabled with the `console` profile |
 | `rag-api` | 8000 | Optional RAG chat API built from the knowledge-base service |
 | `qdrant` | 6333 | Vector database for seeded knowledge chunks |
 
@@ -80,7 +80,7 @@ This starts the mock-first core services. The operator console is profile-gated 
 To include the operator console after adding local Clerk test keys to `deploy/.env`:
 
 ```powershell
-docker compose --env-file .\deploy\.env -f .\deploy\docker-compose.yml --profile phase1b up -d --build
+docker compose --env-file .\deploy\.env -f .\deploy\docker-compose.yml --profile console up -d --build
 ```
 
 ### 3. Check core health
@@ -172,7 +172,7 @@ Do not commit real keys, real CRM IDs, real database URLs, logs, screenshots wit
 
 ## Security And Release Model
 
-- This project must be published from a clean release tree, not from the historical `多AI协作` monorepo.
+- This project must be published from a clean release tree, not from the historical private multi-project workspace.
 - The safe publication path is: copy a clean subtree, exclude local secrets and generated data, run local scans, `git init`, then publish a clean initial commit.
 - `deploy/.env`, `.env.real`, logs, bundles, local runtime data, and monorepo history must not enter the public release tree.
 - Public demos and Upwork proposals should use mock-only data by default.
@@ -191,7 +191,7 @@ n8n itself is not part of this project's MIT license. The `n8nio/n8n` image, n8n
 - [Case study](docs/case-study.md)
 - [Architecture diagram](docs/architecture-diagram.mmd)
 - [Claims ledger](docs/portfolio/claims-ledger.md)
-- [Upwork listing draft](docs/portfolio/upwork-listing.md)
+- [Proposal proof points](docs/proposal-packet/proof-points.md)
 
 Demo script, video, and screenshots belong to the proposal packet and should be published only after a separate asset-sanitization review.
 
@@ -203,5 +203,5 @@ Demo script, video, and screenshots belong to the proposal packet and should be 
 - The default sales-agent path uses `ghl-mock` as a mock Gemini-compatible endpoint.
 - The default RAG path returns a deterministic mock answer. Real document retrieval and generation require a local Gemini key.
 - `revenue_events` are available as demo/seed data and schema groundwork, not a fully real-time revenue analytics feature.
-- The operator console requires valid Clerk test keys when the `phase1b` profile is used.
+- The operator console requires valid Clerk test keys when the `console` profile is used.
 - The n8n demo environment allows workflow env access for local secret parameterization; production hardening should move this to a stricter credential model.

@@ -79,10 +79,10 @@ export default async function TicketsPage({ searchParams }: PageProps) {
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
-          <p className="text-sm font-medium text-zinc-500">Phase 2 MVP</p>
+          <p className="text-sm font-medium text-zinc-500">Operator Console</p>
           <h1 className="text-2xl font-semibold text-zinc-50">Tickets</h1>
           <p className="text-sm text-zinc-400">
-            Live queue pulled directly from the MVP Postgres schema.
+            Live queue pulled directly from the demo Postgres schema.
           </p>
         </div>
         <Link

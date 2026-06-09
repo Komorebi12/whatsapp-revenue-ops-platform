@@ -84,7 +84,7 @@ export function ReplyForm({ ticketId, messages }: ReplyFormProps) {
           },
         ]);
 
-        // Phase 3: n8n workflow + Twilio takes 2-5s; refresh at 3s and 6s
+        // n8n workflow delivery usually takes 2-5s; refresh at 3s and 6s
         window.setTimeout(() => {
           router.refresh();
         }, 3000);

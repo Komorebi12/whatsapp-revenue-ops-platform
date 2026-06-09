@@ -5,7 +5,7 @@ This file maps public-facing portfolio claims to source evidence. README, case s
 | Claim | Evidence | Notes / Limits |
 |---|---|---|
 | The project orchestrates a local WhatsApp revenue-ops demo with Docker Compose. | `deploy/docker-compose.yml`; `README.md`; `scripts/simulate-message.ps1` | Local demo only, not production SaaS. |
-| The Compose file defines eight services. | `deploy/docker-compose.yml`; `README.md` service table | `operator-console` is profile-gated with `phase1b`. |
+| The Compose file defines eight services. | `deploy/docker-compose.yml`; `README.md` service table | `operator-console` is profile-gated with `console`. |
 | Core pinned infrastructure images are `postgres:16`, `n8nio/n8n:2.17.6`, and `qdrant/qdrant:v1.18.0`. | `deploy/docker-compose.yml` | Other services are locally built from project Dockerfiles. |
 | Inbound demo messages are simulated with scripts. | `scripts/simulate-message.ps1`; `scripts/simulate-rag-query.ps1` | No real Twilio Business API number is configured. |
 | n8n performs keyword-based routing between RAG and sales paths. | `deploy/n8n/workflows/wf_phase1a_whatsapp_inbound.json` node `Route Intent` | Not an LLM intent classifier. |
@@ -23,4 +23,4 @@ This file maps public-facing portfolio claims to source evidence. README, case s
 | A demo reset script can rebuild the local demo state. | `scripts/demo-reset.ps1`; `scripts/demo-reset.sh` | It clears local volumes and requires confirmation by default. |
 | Operator console visibility is optional and requires Clerk test keys. | `deploy/docker-compose.yml`; `apps/operator-console/`; `README.md` | Profile-gated service; not required for core script demo. |
 | Required runtime service code is included in the reference repo layout. | `services/sales-agent/`; `services/ghl-sync/`; `services/rag-api/`; `apps/operator-console/`; `scripts/verify-standalone-release.ps1` | Public release must still be created through a clean initial commit. |
-| A narrated demo video can be attached to proposals as a separate asset. | Proposal packet asset review; `docs/portfolio/upwork-listing.md` | Video/screenshots and narration scripts must pass a separate sanitization review before public sharing. |
+| A narrated demo video can be attached to proposals as a separate asset. | Separate proposal packet asset review | Video/screenshots and narration scripts are intentionally excluded from the public tree unless they pass a separate sanitization review. |

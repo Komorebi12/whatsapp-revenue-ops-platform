@@ -71,7 +71,7 @@ export default async function ActivityPage({ searchParams }: PageProps) {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
       <div className="space-y-1">
-        <p className="text-sm font-medium text-zinc-500">Phase 2 MVP</p>
+        <p className="text-sm font-medium text-zinc-500">Operator Console</p>
         <h1 className="text-2xl font-semibold text-zinc-50">Activity</h1>
         <p className="text-sm text-zinc-400">
           Latest 200 events from the audit and delivery stream.

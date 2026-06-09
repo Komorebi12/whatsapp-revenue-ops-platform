@@ -41,7 +41,7 @@ The current demo topology has eight Compose services:
 | `sales-agent` | 8020 | AI sales reply and lead scoring service |
 | `ghl-sync` | 8010 | CRM sync adapter pointed at the local mock |
 | `ghl-mock` | 8090 | Demo-safe GoHighLevel API mock |
-| `operator-console` | 3000 | Optional operator UI behind the `phase1b` profile |
+| `operator-console` | 3000 | Optional operator UI behind the `console` profile |
 | `rag-api` | 8000 | RAG chat API |
 | `qdrant` | 6333 | Vector database for seeded knowledge chunks |
 
@@ -89,7 +89,7 @@ This is a local portfolio demo, not a production deployment.
 - GoHighLevel is mocked by `ghl-mock`; no real GHL production API calls are made.
 - Intent routing is keyword-based and does not use an LLM classifier.
 - `revenue_events` are present as schema and demo/seed data; real-time revenue visibility is deferred to a future route.
-- The operator console requires valid Clerk test keys when the `phase1b` profile is used.
+- The operator console requires valid Clerk test keys when the `console` profile is used.
 - The n8n demo uses `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` to support environment-based secret expressions; a pre-production deployment should move to a stricter credential model.
 - `NODE_FUNCTION_ALLOW_EXTERNAL="*"` remains a local-demo convenience and should be narrowed before production use.
 
