@@ -49,10 +49,12 @@ Evidence:
 
 ## 4. Inspectable Operational Surface
 
-The platform ships with health checks, reset scripts, inspection scripts, and a claims ledger that keeps public statements tied to source evidence. Health output is organized by `[alive]`, `[configured]`, and `[ready]` diagnostics.
+The platform ships with health checks, reset scripts, inspection scripts, CI gates, and a claims ledger that keeps public statements tied to source evidence. Health output is organized by `[alive]`, `[configured]`, and `[ready]` diagnostics.
 
 Evidence:
 
+- `.github/workflows/ci.yml`
+- `scripts/ci-smoke.ps1`
 - `scripts/health-check.ps1`
 - `scripts/demo-reset.ps1`
 - `scripts/inspect-postgres.ps1`

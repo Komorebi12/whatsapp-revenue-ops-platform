@@ -1,5 +1,7 @@
 # WhatsApp Revenue Ops Platform
 
+[![CI](https://github.com/Komorebi12/whatsapp-revenue-ops-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Komorebi12/whatsapp-revenue-ops-platform/actions/workflows/ci.yml)
+
 Open reference implementation for self-hosting n8n as the orchestration layer for a WhatsApp-style revenue operations stack.
 
 This repository packages a local, reproducible platform that connects n8n workflows, FastAPI integration services, a mocked GoHighLevel CRM API, an AI sales-agent path, an optional RAG path, Postgres-backed audit data, Qdrant, and an optional operator console.
@@ -192,6 +194,7 @@ n8n itself is not part of this project's MIT license. The `n8nio/n8n` image, n8n
 - [Architecture diagram](docs/architecture-diagram.mmd)
 - [Claims ledger](docs/portfolio/claims-ledger.md)
 - [Proposal proof points](docs/proposal-packet/proof-points.md)
+- [CI workflow](.github/workflows/ci.yml)
 
 Demo script, video, and screenshots belong to the proposal packet and should be published only after a separate asset-sanitization review.
 

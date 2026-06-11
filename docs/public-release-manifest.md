@@ -21,6 +21,8 @@ Core project files:
 - `.gitignore`
 - `.gitattributes`
 - `.dockerignore`
+- `.github/workflows/ci.yml`
+- `pyproject.toml`
 
 Do not publish internal AI coordination entry files unless they are rewritten for the public repo:
 

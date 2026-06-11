@@ -61,6 +61,9 @@ $scanFiles = @(
   'docs/public-release-manifest.md',
   'docs/portfolio/claims-ledger.md',
   'docs/proposal-packet/proof-points.md',
+  '.github/workflows/ci.yml',
+  'pyproject.toml',
+  'scripts/ci-smoke.ps1',
   'mock/ghl-mock-server/README.md'
 )
 
@@ -103,6 +106,7 @@ $textExtensions = @(
   '.ts',
   '.tsx',
   '.txt',
+  '.toml',
   '.yml'
 )
 
