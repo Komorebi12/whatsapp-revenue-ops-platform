@@ -50,11 +50,12 @@ jobs:
           python -m pip install -r services/rag-api/requirements.txt
 
       - name: Lint Python syntax-critical rules
-        run: ruff check services/rag-api services/sales-agent services/ghl-sync mock/ghl-mock-server
+        run: python -m ruff check services/rag-api services/sales-agent services/ghl-sync mock/ghl-mock-server
 
       - name: Run RAG mock-mode tests
-        working-directory: services/rag-api
-        run: pytest tests
+        env:
+          PYTHONPATH: services/rag-api
+        run: python -m pytest services/rag-api/tests
 
       - name: Run static release checks
         shell: pwsh
