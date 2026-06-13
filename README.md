@@ -124,6 +124,26 @@ powershell -ExecutionPolicy Bypass -File .\scripts\demo-reset.ps1
 
 The reset script intentionally clears local Compose volumes and asks for a `RESET` confirmation by default.
 
+## Scaling: Queue Mode
+
+The default quickstart keeps n8n in single-process mode. For a local queue-mode reference topology, layer the queue overlay on top of the base Compose file:
+
+```powershell
+docker compose --env-file .\deploy\.env.mock `
+  -f .\deploy\docker-compose.yml -f .\deploy\docker-compose.queue.yml `
+  up -d --build --scale n8n-worker=2
+```
+
+Queue mode keeps the main n8n UI on `5678`, exposes the dedicated webhook processor on `5680`, adds Redis `7.2`, and scales `n8n-worker` without a fixed container name.
+
+Run the local verification script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-queue-mode.ps1 -WorkerScale 2
+```
+
+Details and reset guidance: [docs/queue-mode.md](docs/queue-mode.md).
+
 ## RAG Path: Mock By Default, Real With Local Keys
 
 The default mock-first path does not require a real Gemini key. With `MOCK_MODE=true` and an empty `GEMINI_API_KEY`, `rag-api` returns a deterministic mock answer and source chunk so the RAG workflow can be exercised without external services.
@@ -208,3 +228,4 @@ Demo script, video, and screenshots belong to the proposal packet and should be 
 - `revenue_events` are available as demo/seed data and schema groundwork, not a fully real-time revenue analytics feature.
 - The operator console requires valid Clerk test keys when the `console` profile is used.
 - The n8n demo environment allows workflow env access for local secret parameterization; production hardening should move this to a stricter credential model.
+- Queue mode is a local reference topology, not a production HA deployment.

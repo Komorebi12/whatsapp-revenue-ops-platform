@@ -33,6 +33,7 @@ Do not publish internal AI coordination entry files unless they are rewritten fo
 Runtime and deployment files:
 
 - `deploy/docker-compose.yml`
+- `deploy/docker-compose.queue.yml`
 - `deploy/.env.example`
 - `deploy/.env.mock`
 - `deploy/.env.real.example`
@@ -62,6 +63,7 @@ Documentation:
 - `docs/case-study.md`
 - `docs/data-model.md`
 - `docs/public-release-manifest.md`
+- `docs/queue-mode.md`
 - `docs/portfolio/claims-ledger.md`
 - `docs/proposal-packet/proof-points.md`
 - selected sanitized `docs/assets/**` only after a separate asset review; no screenshots or videos are included by default

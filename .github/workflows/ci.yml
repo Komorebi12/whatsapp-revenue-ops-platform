@@ -67,6 +67,10 @@ jobs:
       - name: Validate Compose configuration
         run: docker compose --env-file deploy/.env.mock -f deploy/docker-compose.yml config --quiet
 
+      - name: Validate queue-mode Compose configuration
+        shell: pwsh
+        run: ./scripts/verify-queue-config.ps1
+
   docker-smoke:
     name: docker smoke
     runs-on: ubuntu-latest

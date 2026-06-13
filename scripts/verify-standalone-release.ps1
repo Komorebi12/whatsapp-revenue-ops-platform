@@ -50,6 +50,7 @@ $forbiddenPatterns = @(
 $scanFiles = @(
   'README.md',
   'deploy/docker-compose.yml',
+  'deploy/docker-compose.queue.yml',
   'deploy/docker/sales-agent.Dockerfile',
   'deploy/docker/ghl-sync.Dockerfile',
   'deploy/docker/rag-api.Dockerfile',
@@ -59,11 +60,14 @@ $scanFiles = @(
   'docs/case-study.md',
   'docs/data-model.md',
   'docs/public-release-manifest.md',
+  'docs/queue-mode.md',
   'docs/portfolio/claims-ledger.md',
   'docs/proposal-packet/proof-points.md',
   '.github/workflows/ci.yml',
   'pyproject.toml',
   'scripts/ci-smoke.ps1',
+  'scripts/smoke-queue-mode.ps1',
+  'scripts/verify-queue-config.ps1',
   'mock/ghl-mock-server/README.md'
 )
 

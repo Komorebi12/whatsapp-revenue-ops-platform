@@ -72,6 +72,18 @@ Evidence:
 - `.dockerignore`
 - `scripts/verify-standalone-release.ps1`
 
+## 6. Opt-In n8n Queue Mode
+
+The repository includes an optional Compose overlay that separates n8n into main, webhook, and worker processes with Redis as the queue broker. The base quickstart remains unchanged, while queue mode can be verified locally with a dedicated smoke script and a CI-safe static config gate.
+
+Evidence:
+
+- `deploy/docker-compose.queue.yml`
+- `docs/queue-mode.md`
+- `scripts/verify-queue-config.ps1`
+- `scripts/smoke-queue-mode.ps1`
+- `.github/workflows/ci.yml`
+
 ## License Boundary
 
 This repository is an open reference implementation for self-hosting n8n. It does not relicense n8n, provide a hosted n8n SaaS, or resell n8n core functionality. n8n itself remains governed by n8n's own license terms, including the Sustainable Use License.

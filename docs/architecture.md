@@ -38,6 +38,22 @@ simulate-message.ps1 or simulate-rag-query.ps1
 
 The default mock environment uses keyword routing inside the workflow. Messages containing policy, return, refund, FAQ, or similar terms route to the RAG path. Other messages route to the sales-agent path.
 
+## Queue Mode Topology
+
+`deploy/docker-compose.queue.yml` is an opt-in overlay for running n8n queue mode without changing the default quickstart.
+
+In queue mode:
+
+- the existing `n8n` service becomes the main process for UI, scheduling, metadata migrations, and bootstrap workflow import,
+- `n8n-webhook` listens on host port `5680` and receives production-style webhook calls,
+- `n8n-worker` executes queued jobs and can be scaled with `--scale n8n-worker=N`,
+- `redis:7.2-alpine` is the local BullMQ broker, and
+- all n8n processes share the same encryption key, Postgres metadata database, Redis broker, timezone, and filesystem binary-data mode.
+
+The default single-process n8n endpoint stays on `5678`. Queue-mode tests intentionally call `5680` to prove the webhook processor and worker path.
+
+The queue overlay shares the base `n8n_data:/home/node/.n8n` volume across main, webhook, and worker containers. A narrower `binaryData`-only mount was tested first, but n8n `2.17.6` created the nested volume with write permissions that blocked the `node` user. Full `.n8n` sharing is the local Docker Compose fallback and matches the official n8n Compose queue-mode example pattern. Production multi-node deployments need a storage layer that all n8n processes can safely read and write.
+
 ## Mock-First Design
 
 The public default is `deploy/.env.mock`.

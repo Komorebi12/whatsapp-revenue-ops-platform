@@ -1,0 +1,107 @@
+# Queue-mode overlay. Use with deploy/docker-compose.yml; never as a standalone file.
+#
+# Example:
+#   docker compose --env-file .\deploy\.env.mock `
+#     -f .\deploy\docker-compose.yml -f .\deploy\docker-compose.queue.yml `
+#     up -d --build --scale n8n-worker=2
+#
+# The base quickstart remains a single-process n8n stack.
+
+x-n8n-queue-shared-env: &n8n-queue-shared-env
+  N8N_HOST: 0.0.0.0
+  N8N_PORT: 5678
+  N8N_PROTOCOL: http
+  N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-mock-n8n-encryption-key-for-local-demo-only}
+  N8N_BASIC_AUTH_ACTIVE: "false"
+  DB_TYPE: postgresdb
+  DB_POSTGRESDB_HOST: postgres
+  DB_POSTGRESDB_PORT: 5432
+  DB_POSTGRESDB_DATABASE: n8n_metadata
+  DB_POSTGRESDB_USER: postgres
+  DB_POSTGRESDB_PASSWORD: postgres
+  EXECUTIONS_MODE: queue
+  QUEUE_BULL_REDIS_HOST: redis
+  QUEUE_BULL_REDIS_PORT: 6379
+  N8N_DEFAULT_BINARY_DATA_MODE: filesystem
+  N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+  N8N_DIAGNOSTICS_ENABLED: "false"
+  N8N_PERSONALIZATION_ENABLED: "false"
+  N8N_TEMPLATES_ENABLED: "false"
+  N8N_LOG_LEVEL: info
+  GENERIC_TIMEZONE: Asia/Shanghai
+  NODE_FUNCTION_ALLOW_EXTERNAL: "*"
+  BUSINESS_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/revenue_ops
+  RAG_API_URL: http://rag-api:8000/chat
+  MVP_REPLY_WEBHOOK_SECRET: ${MVP_REPLY_WEBHOOK_SECRET:-mock-console-secret}
+  AGENT_AUTH_SECRET: ${AGENT_AUTH_SECRET:-mock-agent-secret}
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: whatsapp-revenue-ops-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  n8n:
+    # Queue-mode main process: UI, scheduling, metadata migrations, and bootstrap import.
+    # The base entrypoint remains in place and still runs n8n start after import.
+    environment:
+      EXECUTIONS_MODE: queue
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: "true"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  n8n-webhook:
+    image: n8nio/n8n:2.17.6
+    container_name: whatsapp-revenue-ops-n8n-webhook
+    command: webhook
+    environment:
+      <<: *n8n-queue-shared-env
+    ports:
+      - "5680:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      n8n:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5678/healthz',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  n8n-worker:
+    image: n8nio/n8n:2.17.6
+    # No container_name: required for `docker compose --scale n8n-worker=N`.
+    command: worker
+    environment:
+      <<: *n8n-queue-shared-env
+      QUEUE_HEALTH_CHECK_ACTIVE: "true"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      n8n:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5678/healthz',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  operator-console:
+    environment:
+      MVP_REPLY_WEBHOOK_URL: http://n8n-webhook:5678/webhook/console/reply
