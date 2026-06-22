@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sales-agent
+  labels:
+    app.kubernetes.io/name: sales-agent
+    app.kubernetes.io/part-of: whatsapp-revenue-ops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sales-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sales-agent
+        app.kubernetes.io/part-of: whatsapp-revenue-ops
+    spec:
+      containers:
+        - name: sales-agent
+          image: sales-agent:local-dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8020
+          envFrom:
+            - configMapRef:
+                name: revenue-ops-app-config
+            - secretRef:
+                name: revenue-ops-secret
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sales-agent
+spec:
+  selector:
+    app.kubernetes.io/name: sales-agent
+  ports:
+    - name: http
+      port: 8020
+      targetPort: http
+

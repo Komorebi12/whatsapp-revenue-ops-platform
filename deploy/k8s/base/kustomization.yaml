@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: revenue-ops
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+resources:
+  - namespace.yaml
+  - configmap-app.yaml
+  - secret.mock.yaml
+  - postgres.yaml
+  - redis.yaml
+  - qdrant.yaml
+  - n8n-main.yaml
+  - n8n-webhook.yaml
+  - n8n-worker.yaml
+  - sales-agent.yaml
+  - ghl-sync.yaml
+  - ghl-mock.yaml
+  - rag-api.yaml
+  - ingress.yaml
+
+configMapGenerator:
+  - name: postgres-initdb
+    files:
+      - 00_schema.sql=assets/init-db/00_schema.sql
+      - 01_seed.sql=assets/init-db/01_seed.sql
+      - 02_n8n_metadata.sql=assets/init-db/02_n8n_metadata.sql
+  - name: n8n-bootstrap
+    files:
+      - n8n-entrypoint.sh=assets/n8n/bootstrap-entrypoint.sh
+  - name: n8n-workflows
+    files:
+      - wf_phase1a_whatsapp_inbound.json=assets/n8n/workflows/wf_phase1a_whatsapp_inbound.json
+      - wf_console_staff_reply.json=assets/n8n/workflows/wf_console_staff_reply.json
+
+secretGenerator:
+  - name: n8n-credentials
+    files:
+      - phase1c_revenue_ops_postgres.json=assets/n8n/credentials/phase1c_revenue_ops_postgres.json

@@ -39,6 +39,7 @@ Runtime and deployment files:
 - `deploy/.env.real.example`
 - `deploy/docker/**`
 - `deploy/init-db/**`
+- `deploy/k8s/**`
 - `deploy/n8n/bootstrap-entrypoint.sh`
 - `deploy/n8n/credentials/phase1c_revenue_ops_postgres.json` because it contains only the local-only demo Postgres credential (`postgres/postgres`) used by the public Compose stack; it is not a production secret and keeps the imported n8n workflow credential binding intact
 - `deploy/n8n/workflows/**`
@@ -64,6 +65,7 @@ Documentation:
 - `docs/data-model.md`
 - `docs/public-release-manifest.md`
 - `docs/queue-mode.md`
+- `docs/deploy-k8s.md`
 - `docs/portfolio/claims-ledger.md`
 - `docs/proposal-packet/proof-points.md`
 - selected sanitized `docs/assets/**` only after a separate asset review; no screenshots or videos are included by default
@@ -155,6 +157,15 @@ Workflow JSON files may be published only if they contain:
 - only intentional env expressions such as `$env.AGENT_AUTH_SECRET`
 
 n8n credential exports should not be published unless they are demonstrably non-sensitive local demo credentials. Prefer README/bootstrap instructions over credential JSON in the public repo.
+
+## Kubernetes Asset Rules
+
+Kubernetes manifests under `deploy/k8s/**` may be published only if:
+
+- `secret.mock.yaml` contains only `.env.mock`-equivalent dummy values,
+- `secret.example.yaml` contains placeholders only,
+- any full connection string containing a password comes from a Secret, not a ConfigMap, and
+- mirrored init SQL / n8n bootstrap / workflow assets match the source files checked by `scripts/verify-k8s-manifests.ps1`.
 
 ## Standalone Build Requirement
 

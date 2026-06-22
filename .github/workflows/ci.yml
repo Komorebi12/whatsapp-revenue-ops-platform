@@ -71,6 +71,10 @@ jobs:
         shell: pwsh
         run: ./scripts/verify-queue-config.ps1
 
+      - name: Validate Kubernetes manifests
+        shell: pwsh
+        run: ./scripts/verify-k8s-manifests.ps1 -SkipClientDryRun
+
   docker-smoke:
     name: docker smoke
     runs-on: ubuntu-latest

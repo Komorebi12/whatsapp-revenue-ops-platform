@@ -144,6 +144,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-queue-mode.ps1 -WorkerS
 
 Details and reset guidance: [docs/queue-mode.md](docs/queue-mode.md).
 
+## Kubernetes (kind) Baseline
+
+The Kubernetes baseline translates the queue-mode topology into local `kind` manifests under `deploy/k8s/base`. It is a local reference deployment, not a production HA chart.
+
+Start with the guide:
+
+- [Deploy on Kubernetes (kind)](docs/deploy-k8s.md)
+
+The M2.3 smoke path uses `kubectl port-forward` to the dedicated n8n webhook processor and keeps ingress as an optional second route. K8s performance evidence is intentionally held for the M2.4 load-testing phase.
+
 ## RAG Path: Mock By Default, Real With Local Keys
 
 The default mock-first path does not require a real Gemini key. With `MOCK_MODE=true` and an empty `GEMINI_API_KEY`, `rag-api` returns a deterministic mock answer and source chunk so the RAG workflow can be exercised without external services.
