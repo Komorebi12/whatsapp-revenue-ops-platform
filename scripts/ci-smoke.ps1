@@ -1,7 +1,9 @@
 param(
   [string]$ProjectName = 'revenueops-ci',
   [int]$HealthRetries = 60,
-  [int]$HealthSleepSeconds = 5
+  [int]$HealthSleepSeconds = 5,
+  [int]$WebhookRetries = 12,
+  [int]$WebhookSleepSeconds = 5
 )
 
 $ErrorActionPreference = 'Stop'
@@ -90,6 +92,29 @@ function Test-NotFallback {
   }
 }
 
+function Test-N8nWebhookNotReady {
+  param(
+    [System.Management.Automation.ErrorRecord]$ErrorRecord
+  )
+
+  $candidates = @()
+
+  if ($null -ne $ErrorRecord.Exception -and $ErrorRecord.Exception.Message) {
+    $candidates += $ErrorRecord.Exception.Message
+  }
+
+  if ($null -ne $ErrorRecord.ErrorDetails -and $ErrorRecord.ErrorDetails.Message) {
+    $candidates += $ErrorRecord.ErrorDetails.Message
+  }
+
+  $combined = ($candidates -join "`n")
+  if (-not $combined) {
+    return $false
+  }
+
+  return $combined.Contains('The requested webhook') -and $combined.Contains('is not registered')
+}
+
 function Invoke-HealthCheckWithRetry {
   for ($attempt = 1; $attempt -le $HealthRetries; $attempt++) {
     try {
@@ -104,6 +129,27 @@ function Invoke-HealthCheckWithRetry {
 
       Write-Host "Health checks not ready yet ($attempt/$HealthRetries): $($_.Exception.Message)"
       Start-Sleep -Seconds $HealthSleepSeconds
+    }
+  }
+}
+
+function Invoke-N8nWebhookWithRetry {
+  param(
+    [string]$Description,
+    [string]$Body
+  )
+
+  for ($attempt = 1; $attempt -le $WebhookRetries; $attempt++) {
+    try {
+      return Invoke-RestMethod -Method Post -Uri 'http://localhost:5678/webhook/twilio/whatsapp/inbound' -ContentType 'application/json' -Body $Body -TimeoutSec 30
+    }
+    catch {
+      if ((-not (Test-N8nWebhookNotReady -ErrorRecord $_)) -or $attempt -eq $WebhookRetries) {
+        throw
+      }
+
+      Write-Host "$Description not registered yet ($attempt/$WebhookRetries). Waiting for n8n webhook activation."
+      Start-Sleep -Seconds $WebhookSleepSeconds
     }
   }
 }
@@ -144,7 +190,7 @@ try {
     intent_confidence = 0.91
     ticket_id = 'TICKET-CI-SALES-001'
   } | ConvertTo-Json -Depth 5
-  $salesResponse = Invoke-RestMethod -Method Post -Uri 'http://localhost:5678/webhook/twilio/whatsapp/inbound' -ContentType 'application/json' -Body $salesBody -TimeoutSec 30
+  $salesResponse = Invoke-N8nWebhookWithRetry -Description 'sales n8n webhook' -Body $salesBody
   Test-ResponseField -Response $salesResponse -FieldName 'qualification_tier' -Description 'sales n8n webhook'
   Test-NotFallback -Response $salesResponse -Description 'sales n8n webhook'
 
@@ -159,7 +205,7 @@ try {
     intent_confidence = 0.88
     ticket_id = 'TICKET-CI-RAG-001'
   } | ConvertTo-Json -Depth 5
-  $ragWebhookResponse = Invoke-RestMethod -Method Post -Uri 'http://localhost:5678/webhook/twilio/whatsapp/inbound' -ContentType 'application/json' -Body $ragWebhookBody -TimeoutSec 30
+  $ragWebhookResponse = Invoke-N8nWebhookWithRetry -Description 'RAG n8n webhook' -Body $ragWebhookBody
   Test-ResponseField -Response $ragWebhookResponse -FieldName 'answer' -Description 'RAG n8n webhook'
   Test-NotFallback -Response $ragWebhookResponse -Description 'RAG n8n webhook'
   if ($ragWebhookResponse.answer -notlike '*Mock RAG answer*') {
