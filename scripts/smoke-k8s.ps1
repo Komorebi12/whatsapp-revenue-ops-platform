@@ -141,7 +141,9 @@ function Invoke-WebhookSmoke {
 }
 
 $portForward = $null
-$portForwardLog = Join-Path ([System.IO.Path]::GetTempPath()) ('revenueops-k8s-port-forward-{0}.log' -f ([guid]::NewGuid().ToString('N')))
+$portForwardLogPrefix = Join-Path ([System.IO.Path]::GetTempPath()) ('revenueops-k8s-port-forward-{0}' -f ([guid]::NewGuid().ToString('N')))
+$portForwardStdoutLog = "$portForwardLogPrefix.out.log"
+$portForwardStderrLog = "$portForwardLogPrefix.err.log"
 
 try {
   Write-Section 'Wait for core deployments'
@@ -158,7 +160,7 @@ try {
 
   Write-Section 'Start port-forward to n8n-webhook'
   $portForwardArgs = @('-n', $Namespace, 'port-forward', 'svc/n8n-webhook', "$PortForwardPort`:5678")
-  $portForward = Start-Process -FilePath 'kubectl' -ArgumentList $portForwardArgs -NoNewWindow -WindowStyle Hidden -PassThru -RedirectStandardOutput $portForwardLog -RedirectStandardError $portForwardLog
+  $portForward = Start-Process -FilePath 'kubectl' -ArgumentList $portForwardArgs -WindowStyle Hidden -PassThru -RedirectStandardOutput $portForwardStdoutLog -RedirectStandardError $portForwardStderrLog
   Wait-Port -Port $PortForwardPort -TimeoutSeconds 60
 
   Invoke-WebhookSmoke -TicketSuffix '001'
@@ -187,8 +189,9 @@ finally {
   if ($null -ne $portForward -and -not $portForward.HasExited) {
     Stop-Process -Id $portForward.Id -Force
   }
-  if (Test-Path -LiteralPath $portForwardLog) {
-    Remove-Item -LiteralPath $portForwardLog -Force
+  foreach ($logPath in @($portForwardStdoutLog, $portForwardStderrLog)) {
+    if (Test-Path -LiteralPath $logPath) {
+      Remove-Item -LiteralPath $logPath -Force
+    }
   }
 }
-
