@@ -49,6 +49,8 @@ Application and mock code:
 
 - `mock/**`
 - `scripts/**`
+- `load/k6/**`
+- `load/results/.gitkeep`
 
 Required service source code now lives inside this project:
 
@@ -66,6 +68,7 @@ Documentation:
 - `docs/public-release-manifest.md`
 - `docs/queue-mode.md`
 - `docs/deploy-k8s.md`
+- `docs/load-test-findings.md`
 - `docs/portfolio/claims-ledger.md`
 - `docs/proposal-packet/proof-points.md`
 - selected sanitized `docs/assets/**` only after a separate asset review; no screenshots or videos are included by default
@@ -111,6 +114,9 @@ Generated and dependency folders:
 - `.next/`
 - `dist/`
 - `build/`
+- `load/results/**` except `load/results/.gitkeep`
+- k6 archives such as `*.tar`
+- raw k6 CSV / detailed JSON time-series exports
 - `__pycache__/`
 - `.pytest_cache/`
 - `.venv/`

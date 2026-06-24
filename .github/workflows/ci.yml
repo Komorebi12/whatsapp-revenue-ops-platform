@@ -75,6 +75,15 @@ jobs:
         shell: pwsh
         run: ./scripts/verify-k8s-manifests.ps1 -SkipClientDryRun
 
+      - name: Install k6
+        run: |
+          curl -L --fail -o /tmp/k6.deb https://github.com/grafana/k6/releases/download/v2.0.0/k6-v2.0.0-linux-amd64.deb
+          sudo apt-get install -y /tmp/k6.deb
+
+      - name: Validate load-test assets with k6 archive
+        shell: pwsh
+        run: ./scripts/verify-load-test-assets.ps1
+
   docker-smoke:
     name: docker smoke
     runs-on: ubuntu-latest

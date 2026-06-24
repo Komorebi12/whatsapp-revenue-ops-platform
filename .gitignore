@@ -14,6 +14,12 @@ tmp/
 temp/
 .cache/
 
+# Load-test generated artifacts
+load/results/*
+!load/results/.gitkeep
+*.tar
+*.tar.gz
+
 # Docker/database local artifacts
 work/
 volumes/

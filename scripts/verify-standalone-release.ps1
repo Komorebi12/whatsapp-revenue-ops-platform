@@ -70,6 +70,7 @@ $scanFiles = @(
   'docs/case-study.md',
   'docs/data-model.md',
   'docs/deploy-k8s.md',
+  'docs/load-test-findings.md',
   'docs/public-release-manifest.md',
   'docs/queue-mode.md',
   'docs/portfolio/claims-ledger.md',
@@ -79,9 +80,18 @@ $scanFiles = @(
   'scripts/ci-smoke.ps1',
   'scripts/smoke-k8s.ps1',
   'scripts/smoke-k8s.sh',
+  'scripts/smoke-load-k8s.ps1',
+  'scripts/smoke-load-k8s.sh',
   'scripts/smoke-queue-mode.ps1',
+  'scripts/run-load-tests.ps1',
+  'scripts/run-load-tests.sh',
+  'scripts/verify-load-test-assets.ps1',
   'scripts/verify-k8s-manifests.ps1',
   'scripts/verify-queue-config.ps1',
+  'load/k6/lib/options.js',
+  'load/k6/rag-chat.js',
+  'load/k6/sales-agent.js',
+  'load/k6/n8n-inbound.js',
   'mock/ghl-mock-server/README.md'
 )
 

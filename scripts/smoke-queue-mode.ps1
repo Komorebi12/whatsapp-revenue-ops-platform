@@ -2,7 +2,8 @@ param(
   [string]$ProjectName = 'revenueops-queue',
   [int]$WorkerScale = 2,
   [int]$HealthRetries = 80,
-  [int]$HealthSleepSeconds = 5
+  [int]$HealthSleepSeconds = 5,
+  [string]$ComposeOverrideFile = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -36,7 +37,11 @@ function Invoke-Compose {
     '--env-file', $envFile,
     '-f', $composeFile,
     '-f', $queueComposeFile
-  ) + $CommandArgs
+  )
+  if ($ComposeOverrideFile) {
+    $composeArgs += @('-f', $ComposeOverrideFile)
+  }
+  $composeArgs += $CommandArgs
 
   & docker @composeArgs
   if ($LASTEXITCODE -ne 0) {
@@ -55,7 +60,11 @@ function Invoke-ComposeOutput {
     '--env-file', $envFile,
     '-f', $composeFile,
     '-f', $queueComposeFile
-  ) + $CommandArgs
+  )
+  if ($ComposeOverrideFile) {
+    $composeArgs += @('-f', $ComposeOverrideFile)
+  }
+  $composeArgs += $CommandArgs
 
   $output = & docker @composeArgs
   if ($LASTEXITCODE -ne 0) {
@@ -63,6 +72,52 @@ function Invoke-ComposeOutput {
   }
 
   return $output
+}
+
+function Invoke-ComposeSqlScalar {
+  param(
+    [string]$Database,
+    [string]$Query
+  )
+
+  $output = Invoke-ComposeOutput @('exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', $Database, '-Atc', $Query)
+  return (($output -join '').Trim())
+}
+
+function Get-N8nExecutionCount {
+  return [int](Invoke-ComposeSqlScalar -Database 'n8n_metadata' -Query 'select count(*) from execution_entity;')
+}
+
+function Ensure-ConsoleReplyTicket {
+  param([string]$TicketId)
+
+  $escapedTicketId = $TicketId.Replace("'", "''")
+  $customerId = [guid]::NewGuid().ToString()
+  $phoneSuffix = (Get-Random -Minimum 1000000 -Maximum 9999999).ToString()
+  $phone = "+1555$phoneSuffix"
+  $query = @"
+with customer as (
+  insert into customers (id, phone, display_name, metadata_json)
+  values (
+    '$customerId',
+    '$phone',
+    'Queue Smoke Buyer',
+    jsonb_build_object('source', 'queue-smoke')
+  )
+  returning id
+)
+insert into tickets (ticket_id, customer_id, intent, status, subject, context_json)
+select
+  '$escapedTicketId',
+  id,
+  'information_query',
+  'awaiting_staff',
+  'Queue smoke console reply ticket',
+  jsonb_build_object('source', 'queue-smoke')
+from customer
+on conflict (ticket_id) do nothing;
+"@
+  Invoke-ComposeSqlScalar -Database 'revenue_ops' -Query $query | Out-Null
 }
 
 function Write-Section {
@@ -161,6 +216,8 @@ try {
     throw "rag-api mock_mode was not true. Response: $($ragHealth | ConvertTo-Json -Depth 20 -Compress)"
   }
 
+  $beforeExecutions = Get-N8nExecutionCount
+
   Write-Section 'Assert sales path through queue webhook'
   $salesBody = @{
     customer_id = '11111111-1111-4111-8111-111111111111'
@@ -193,6 +250,35 @@ try {
   if ($ragWebhookResponse.answer -notlike '*Mock RAG answer*') {
     throw "queue RAG webhook did not return the deterministic mock answer. Response: $($ragWebhookResponse | ConvertTo-Json -Depth 20 -Compress)"
   }
+
+  Write-Section 'Assert console/reply path through queue webhook'
+  $consoleTicketId = 'TICKET-QUEUE-CONSOLE-' + [guid]::NewGuid().ToString('N')
+  Ensure-ConsoleReplyTicket -TicketId $consoleTicketId
+
+  $idempotencyKey = [guid]::NewGuid().ToString()
+  $replyBody = @{
+    ticket_id = $consoleTicketId
+    body_text = 'Queue smoke staff reply through the dedicated webhook processor.'
+    idempotency_key = $idempotencyKey
+    clerk_user_id = 'user_demo_operator'
+  } | ConvertTo-Json -Depth 5
+  $replyResponse = Invoke-RestMethod -Method Post -Uri 'http://localhost:5680/webhook/console/reply' -Headers @{ Authorization = 'Bearer mock-console-secret' } -ContentType 'application/json' -Body $replyBody -TimeoutSec 45
+  if (($replyResponse.PSObject.Properties.Name -contains 'success') -and $replyResponse.success -ne $true) {
+    throw "queue console/reply did not return success=true. Response: $($replyResponse | ConvertTo-Json -Depth 20 -Compress)"
+  }
+
+  $escapedIdempotencyKey = $idempotencyKey.Replace("'", "''")
+  $messageCount = [int](Invoke-ComposeSqlScalar -Database 'revenue_ops' -Query "select count(*) from messages where idempotency_key = '$escapedIdempotencyKey';")
+  if ($messageCount -lt 1) {
+    throw "queue console/reply did not write a staff message for idempotency key $idempotencyKey."
+  }
+
+  Write-Section 'Assert n8n execution records increased'
+  $afterExecutions = Get-N8nExecutionCount
+  if ($afterExecutions -le $beforeExecutions) {
+    throw "n8n execution_entity count did not increase. Before: $beforeExecutions. After: $afterExecutions."
+  }
+  Write-Host "n8n execution_entity count increased from $beforeExecutions to $afterExecutions."
 
   Write-Section 'Assert Redis queue keys and worker logs'
   $redisKeys = @(Invoke-ComposeOutput @('exec', '-T', 'redis', 'redis-cli', '--scan'))
