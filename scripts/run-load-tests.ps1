@@ -6,10 +6,14 @@ param(
   [int]$WarmupVus = 1,
   [int]$Vus = 5,
   [string]$Duration = '30s',
+  [Nullable[int]]$InboundVus = $null,
+  [string]$InboundDuration = '',
+  [int]$WorkerLogSettleSeconds = 3,
   [int]$HealthRetries = 80,
   [int]$HealthSleepSeconds = 5,
   [string]$ComposeOverrideFile = '',
   [switch]$SkipBuild,
+  [switch]$SkipFloorScenarios,
   [switch]$KeepRunning
 )
 
@@ -21,6 +25,11 @@ $queueComposeFile = Join-Path $projectRoot 'deploy/docker-compose.queue.yml'
 $envFile = Join-Path $projectRoot 'deploy/.env.mock'
 $resultsRoot = Join-Path $projectRoot 'load/results'
 $summaryRoot = Join-Path $resultsRoot ('compose-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$effectiveInboundVus = if ($null -ne $InboundVus) { [int]$InboundVus } else { $Vus }
+$effectiveInboundDuration = if (-not [string]::IsNullOrWhiteSpace($InboundDuration)) { $InboundDuration } else { $Duration }
+if ($null -ne $InboundVus -and [string]::IsNullOrWhiteSpace($InboundDuration)) {
+  throw 'When -InboundVus is provided, -InboundDuration must also be provided so the queue-mode C scenario cannot accidentally fall back to the floor duration.'
+}
 
 $queueServices = @(
   'postgres',
@@ -165,17 +174,34 @@ function Get-RedisEvidence {
 }
 
 function Get-WorkerLogEvidence {
+  param([datetime]$SinceUtc = [datetime]::UtcNow.AddMinutes(-5))
+
   $containers = Get-N8nWorkerContainers
   $evidence = [ordered]@{
     container_count = $containers.Count
-    containers_with_execution_logs = 0
+    containers_participating = 0
     container_ids = $containers
+    window_since_utc = $SinceUtc.ToString('o')
+    per_container = [ordered]@{}
   }
 
   foreach ($container in $containers) {
-    $logs = (Invoke-DockerOutput @('logs', '--tail=250', $container)) -join "`n"
-    if ($logs -match '(?i)(execution|workflow|job)') {
-      $evidence['containers_with_execution_logs'] = [int]$evidence['containers_with_execution_logs'] + 1
+    $since = $SinceUtc.ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $logs = (Invoke-DockerOutput @('logs', '--since', $since, $container)) -join "`n"
+    $matches = @([regex]::Matches($logs, '(?i)(execution(?: id)?|executionId|workflow|job)(?:["'':=\s-]+)([A-Za-z0-9_.:-]{3,})'))
+    $tokens = @($matches | ForEach-Object { $_.Groups[2].Value } | Sort-Object -Unique)
+    $tokenSample = @($tokens | Select-Object -First 20)
+    $hasExecutionSignal = ($tokens.Count -gt 0) -or ($logs -match '(?i)(execution|workflow|job)')
+
+    if ($hasExecutionSignal) {
+      $evidence['containers_participating'] = [int]$evidence['containers_participating'] + 1
+    }
+
+    $evidence['per_container'][$container] = [ordered]@{
+      has_execution_signal = [bool]$hasExecutionSignal
+      distinct_execution_like_token_sample = $tokenSample
+      token_count = $tokens.Count
+      sampled_log_chars = [math]::Min($logs.Length, 800)
     }
   }
 
@@ -343,26 +369,30 @@ function Invoke-WorkerScenario {
 
   $beforeExecutions = Get-N8nExecutionCount
   $beforeRedis = Get-RedisEvidence
-  $beforeWorkerLogs = Get-WorkerLogEvidence
+  $runStart = (Get-Date).ToUniversalTime()
+  $beforeWorkerLogs = Get-WorkerLogEvidence -SinceUtc $runStart.AddMinutes(-5)
   $runs = @()
   for ($run = 1; $run -le $RunsPerScenario; $run++) {
     Write-Section "n8n-inbound worker=$WorkerScale run $run/$RunsPerScenario"
-    $runs += Invoke-K6Scenario -Scenario "n8n-inbound-w$WorkerScale" -Script 'load/k6/n8n-inbound.js' -Run $run -ScenarioVus $Vus -ScenarioDuration $Duration
+    $runs += Invoke-K6Scenario -Scenario "n8n-inbound-w$WorkerScale" -Script 'load/k6/n8n-inbound.js' -Run $run -ScenarioVus $effectiveInboundVus -ScenarioDuration $effectiveInboundDuration
   }
+  Start-Sleep -Seconds $WorkerLogSettleSeconds
   $afterExecutions = Get-N8nExecutionCount
   $afterRedis = Get-RedisEvidence
-  $afterWorkerLogs = Get-WorkerLogEvidence
+  $afterWorkerLogs = Get-WorkerLogEvidence -SinceUtc $runStart
   $executionDelta = $afterExecutions - $beforeExecutions
   if ($executionDelta -lt 1) {
     throw "n8n execution_entity count did not increase for worker scale $WorkerScale"
   }
 
-  if ($WorkerScale -ge 2 -and [int]$afterWorkerLogs.containers_with_execution_logs -lt 1) {
-    throw "No n8n-worker container exposed execution/workflow/job log evidence for worker scale $WorkerScale."
+  if ([int]$afterWorkerLogs.containers_participating -lt $WorkerScale) {
+    throw "Expected $WorkerScale/$WorkerScale n8n-worker containers to expose execution/workflow/job participation evidence, found $($afterWorkerLogs.containers_participating)/$WorkerScale."
   }
 
   $summary = Convert-ToMedianSummary -Scenario "n8n-inbound-w$WorkerScale" -Runs $runs
   $summary['worker_scale'] = $WorkerScale
+  $summary['inbound_vus'] = $effectiveInboundVus
+  $summary['inbound_duration'] = $effectiveInboundDuration
   $summary['execution_delta'] = $executionDelta
   $summary['redis_keys_before'] = $beforeRedis
   $summary['redis_keys_after'] = $afterRedis
@@ -399,8 +429,13 @@ try {
   Invoke-Warmup
 
   $scenarioSummaries = @()
-  $scenarioSummaries += Invoke-RepeatedScenario -Scenario 'rag-chat' -Script 'load/k6/rag-chat.js'
-  $scenarioSummaries += Invoke-RepeatedScenario -Scenario 'sales-agent' -Script 'load/k6/sales-agent.js'
+  if ($SkipFloorScenarios) {
+    Write-Warning 'Skipping floor scenarios. This switch is for development loops only and must not be used for published M2.4b findings.'
+  }
+  else {
+    $scenarioSummaries += Invoke-RepeatedScenario -Scenario 'rag-chat' -Script 'load/k6/rag-chat.js'
+    $scenarioSummaries += Invoke-RepeatedScenario -Scenario 'sales-agent' -Script 'load/k6/sales-agent.js'
+  }
 
   Assert-ConsoleReplyThroughQueue
 
@@ -411,8 +446,10 @@ try {
   $report = [ordered]@{
     generated_at = (Get-Date).ToString('o')
     project_name = $ProjectName
-    vus = $Vus
-    duration = $Duration
+    floor_vus = $Vus
+    floor_duration = $Duration
+    inbound_vus = $effectiveInboundVus
+    inbound_duration = $effectiveInboundDuration
     warmup_seconds = $WarmupSeconds
     runs_per_scenario = $RunsPerScenario
     summaries = $scenarioSummaries

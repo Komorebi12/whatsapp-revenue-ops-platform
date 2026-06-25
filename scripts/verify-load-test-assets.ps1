@@ -62,6 +62,12 @@ foreach ($script in @('load/k6/rag-chat.js', 'load/k6/sales-agent.js', 'load/k6/
   Assert-Content $script 'check(' "k6 response checks in $script"
 }
 
+Assert-Content 'scripts/run-load-tests.ps1' 'InboundVus' 'decoupled inbound VU control'
+Assert-Content 'scripts/run-load-tests.ps1' 'InboundDuration' 'decoupled inbound duration control'
+Assert-Content 'scripts/run-load-tests.ps1' 'SkipFloorScenarios' 'dev-only floor skip switch'
+Assert-Content 'scripts/run-load-tests.ps1' '--since' 'full-window worker log scan'
+Assert-Content 'scripts/run-load-tests.ps1' 'containers_participating' 'per-worker participation evidence'
+Assert-Content 'docs/load-test-findings.md' 'High-Concurrency Rerun' 'M2.4b findings section'
 Assert-Content 'scripts/run-load-tests.ps1' 'execution_entity' 'n8n execution_entity evidence'
 Assert-Content 'scripts/run-load-tests.ps1' 'redis-cli' 'Redis key discovery'
 Assert-Content 'scripts/run-load-tests.ps1' '--scan' 'dynamic Redis SCAN discovery'
