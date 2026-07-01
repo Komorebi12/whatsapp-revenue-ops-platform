@@ -84,6 +84,20 @@ Evidence:
 - `scripts/smoke-queue-mode.ps1`
 - `.github/workflows/ci.yml`
 
+## 7. Local Queue-Mode Load-Test Evidence (Mock-Only)
+
+The repository includes a k6 load-test harness for the queue-mode topology and a curated findings worksheet. On a single local host with mock-only backends, the high-concurrency rerun exercised the n8n inbound queue-mode path across worker scales `1 / 2 / 4` and several inbound concurrency tiers, with three measured runs per worker scale and median reporting. Every tier completed with `error_rate=0`, `checks_rate=1`, increasing n8n `execution_entity` deltas, and N/N worker participation evidence from container logs.
+
+The findings stay deliberately honest about limits. Worker participation proves that all N workers processed execution work during the measured window; it is not a claim of balanced per-worker distribution. Throughput is non-linear and host-bound: at the heaviest local tier, 2 workers produced the best median throughput while 4 workers stayed healthy but did not improve further. These results are single-machine, mock-only, and serve as an engineering worksheet, not a production SLA, production HA, or a real Gemini / GoHighLevel throughput claim.
+
+Evidence:
+
+- `docs/load-test-findings.md`
+- `load/k6/`
+- `scripts/run-load-tests.ps1`
+- `scripts/smoke-load-k8s.ps1`
+- `.github/workflows/ci.yml`
+
 ## License Boundary
 
 This repository is an open reference implementation for self-hosting n8n. It does not relicense n8n, provide a hosted n8n SaaS, or resell n8n core functionality. n8n itself remains governed by n8n's own license terms, including the Sustainable Use License.

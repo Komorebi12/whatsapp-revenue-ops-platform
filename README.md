@@ -152,7 +152,13 @@ Start with the guide:
 
 - [Deploy on Kubernetes (kind)](docs/deploy-k8s.md)
 
-The M2.3 smoke path uses `kubectl port-forward` to the dedicated n8n webhook processor and keeps ingress as an optional second route. K8s performance evidence is intentionally held for the M2.4 load-testing phase.
+The smoke path uses `kubectl port-forward` to the dedicated n8n webhook processor and keeps ingress as an optional route. A single-node kind deployment-under-load snapshot is recorded in [docs/load-test-findings.md](docs/load-test-findings.md) as an isolated health check, not a Compose comparison or production benchmark.
+
+## Load Testing (Local, Mock-Only)
+
+The queue-mode topology includes a local, mock-only k6 load-test harness for `1 / 2 / 4` n8n worker runs. The high-concurrency rerun validated worker participation under concurrent inbound load and documented the single-machine scaling ceiling.
+
+Full method, tables, and limits: [docs/load-test-findings.md](docs/load-test-findings.md).
 
 ## RAG Path: Mock By Default, Real With Local Keys
 
